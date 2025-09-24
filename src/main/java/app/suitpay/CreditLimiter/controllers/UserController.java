@@ -3,8 +3,10 @@ package app.suitpay.CreditLimiter.controllers;
 import app.suitpay.CreditLimiter.DTOs.CreateUserDTO;
 import app.suitpay.CreditLimiter.DTOs.UpdateUserCreditLimitDTO;
 import app.suitpay.CreditLimiter.DTOs.UserResponseDTO;
+import app.suitpay.CreditLimiter.models.History;
 import app.suitpay.CreditLimiter.models.Role;
 import app.suitpay.CreditLimiter.models.User;
+import app.suitpay.CreditLimiter.services.HistoryService;
 import app.suitpay.CreditLimiter.services.RoleService;
 import app.suitpay.CreditLimiter.services.UserService;
 import jakarta.validation.Valid;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.modelmapper.TypeToken;
 
+import java.time.Instant;
 import java.util.List;
 import java.lang.reflect.Type;
 
@@ -28,6 +31,8 @@ public class UserController {
     private UserService service;
     @Autowired
     private RoleService roleService;
+    @Autowired
+    private HistoryService historyService;
     @Autowired
     private ModelMapper mapper;
 
@@ -47,9 +52,6 @@ public class UserController {
 
     @GetMapping("/me")
     public UserResponseDTO getCurrentUser(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
-        }
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String username = jwt.getSubject();
 
@@ -60,7 +62,13 @@ public class UserController {
     }
 
     @PostMapping
-    public UserResponseDTO createUser(@RequestBody @Valid CreateUserDTO body) {
+    public UserResponseDTO createUser(Authentication authentication, @RequestBody @Valid CreateUserDTO body) {
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String username = jwt.getSubject();
+
+        User currentUser = service.getByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
         Role role = roleService.getById(body.getRoleId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found."));
 
@@ -73,16 +81,45 @@ public class UserController {
         mapper.map(body, newUser);
         newUser.setId(null);
         newUser.setRole(role);
-        return mapper.map(service.create(newUser), UserResponseDTO.class);
+
+        var res = mapper.map(service.create(newUser), UserResponseDTO.class);
+
+        History history = new History();
+        history.setNewValue(body.getCreditLimit());
+        history.setUserId(res.getId());
+        history.setPerformedBy(currentUser.getId());
+        history.setTimestamp(Instant.now());
+        history.setAction("CREATE_USER");
+        historyService.create(history);
+        return res;
     }
 
     @PutMapping("/{id}/credit-limit")
-    public UserResponseDTO updateUserCreditLimit(@PathVariable Long id, @RequestBody @Valid UpdateUserCreditLimitDTO body) {
+    public UserResponseDTO updateUserCreditLimit(Authentication authentication, @PathVariable Long id, @RequestBody @Valid UpdateUserCreditLimitDTO body) {
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String username = jwt.getSubject();
+
+        User currentUser = service.getByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
         var user = service.getById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found."));
 
+        History history = new History();
+        history.setOldValue(user.getCreditLimit());
+
         user.setCreditLimit(body.getCreditLimit());
-        return mapper.map(service.update(user), UserResponseDTO.class);
+
+        var res = mapper.map(service.update(user), UserResponseDTO.class);
+
+        history.setNewValue(body.getCreditLimit());
+        history.setUserId(res.getId());
+        history.setPerformedBy(currentUser.getId());
+        history.setTimestamp(Instant.now());
+        history.setAction("UPDATE_USER_CREDIT_LIMIT");
+        historyService.create(history);
+
+        return res;
     }
 
     @DeleteMapping("/{id}")

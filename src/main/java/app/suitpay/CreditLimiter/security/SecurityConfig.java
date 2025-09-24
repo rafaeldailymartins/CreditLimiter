@@ -44,10 +44,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login").permitAll()
 
+                        // GET /history only by ADMIN
+                        .requestMatchers(HttpMethod.GET, "/history/**").hasAuthority("SCOPE_" + adminRole)
+
                         //GET can be accessed by any authenticated user
                         .requestMatchers(HttpMethod.GET, "/**").authenticated()
 
-                        // POST, PUT, DELETE, PATCH only ADMIN
+                        // POST, PUT, DELETE, PATCH only by ADMIN
                         .requestMatchers(HttpMethod.POST, "/**").hasAuthority("SCOPE_" + adminRole)
                         .requestMatchers(HttpMethod.PUT, "/**").hasAuthority("SCOPE_" + adminRole)
                         .requestMatchers(HttpMethod.DELETE, "/**").hasAuthority("SCOPE_" + adminRole)
