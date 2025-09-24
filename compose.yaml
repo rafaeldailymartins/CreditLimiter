@@ -7,3 +7,9 @@ services:
       - 'MSSQL_SA_PASSWORD=verYs3cret'
     ports:
       - "1433:1433"
+    volumes:
+      - db:/var/opt/mssql
+
+volumes:
+  db:
+    driver: local
