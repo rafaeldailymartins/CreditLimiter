@@ -13,3 +13,6 @@ admin:
 
 jwt:
   secret: minhaSuperSecretKey12345678901234567890
+
+app:
+  min-vip-limit: 200

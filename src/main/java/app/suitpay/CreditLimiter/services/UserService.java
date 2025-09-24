@@ -2,6 +2,7 @@ package app.suitpay.CreditLimiter.services;
 
 import app.suitpay.CreditLimiter.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import app.suitpay.CreditLimiter.models.User;
@@ -14,7 +15,8 @@ import java.util.Optional;
 @Service
 public class UserService {
 
-    private static final BigDecimal MIN_VIP_LIMIT = BigDecimal.valueOf(100);
+    @Value("${app.min-vip-limit}")
+    private Integer minVipLimit;
 
     @Autowired
     private UserRepository repository;
@@ -31,16 +33,16 @@ public class UserService {
     public User create(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        if(user.isVip() && user.getCreditLimit().compareTo(MIN_VIP_LIMIT) < 0) {
-            user.setCreditLimit(MIN_VIP_LIMIT);
+        if(user.isVip() && user.getCreditLimit().compareTo(BigDecimal.valueOf(minVipLimit)) < 0) {
+            user.setCreditLimit(BigDecimal.valueOf(minVipLimit));
         }
         return repository.save(user);
     }
 
     @Transactional
     public User update(User user) {
-        if(user.isVip() && user.getCreditLimit().compareTo(MIN_VIP_LIMIT) < 0) {
-            user.setCreditLimit(MIN_VIP_LIMIT);
+        if(user.isVip() && user.getCreditLimit().compareTo(BigDecimal.valueOf(minVipLimit)) < 0) {
+            user.setCreditLimit(BigDecimal.valueOf(minVipLimit));
         }
         return repository.save(user);
     }
