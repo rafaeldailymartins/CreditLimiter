@@ -13,9 +13,3 @@ admin:
 
 jwt:
   secret: minhaSuperSecretKey12345678901234567890
-
-logging:
-  level:
-    org:
-      springframework:
-        security: DEBUG
