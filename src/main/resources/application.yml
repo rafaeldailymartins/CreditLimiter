@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: CreditLimiter
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+admin:
+  name: admin
+  password: admin123
+  role: CREDIT_LIMIT_ADMIN
+
+jwt:
+  secret: minhaSuperSecretKey12345678901234567890
+
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
